@@ -1,555 +1,423 @@
 // ============================================================
-// Chat UI — Gemini AI Version
+// backend/routes/chat.js
+// Gemini AI Chat Route
 // ============================================================
 
-'use strict';
+const express = require('express');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// ── Chat Session Class ───────────────────────────────────────
-class ChatSession {
-  constructor(sessionId) {
-    this.sessionId = sessionId;
+const Analysis = require('../models/Analysis');
+const ChatLog = require('../models/ChatLog');
+const { memStore } = require('./analyze');
 
-    this.chatId =
-      `chat_${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2, 7)}`;
+const router = express.Router();
 
-    this.messages = [];
-    this.streaming = false;
-  }
+// ── Gemini Setup ─────────────────────────────────────────────
+const genAI = new GoogleGenerativeAI(
+  process.env.GEMINI_API_KEY
+);
 
-  addMessage(role, content) {
-    this.messages.push({
-      role,
-      content,
-      timestamp: new Date()
-    });
-  }
+const model = genAI.getGenerativeModel({
+  model: 'gemini-1.5-flash'
+});
 
-  get turnCount() {
-    return this.messages.filter(
-      m => m.role === 'user'
-    ).length;
-  }
+// ── In-memory fallback ───────────────────────────────────────
+const chatMemStore = new Map();
+
+// ── Build AI Context ─────────────────────────────────────────
+function buildSystemPrompt(analysis) {
+
+  const numCols =
+    analysis.columnStats.filter(
+      s => s.type === 'number'
+    );
+
+  const strCols =
+    analysis.columnStats.filter(
+      s => s.type === 'string'
+    );
+
+  const {
+    fileName = 'Unknown',
+    rowCount = 0,
+    colCount = 0,
+    headers = [],
+    insights = [],
+    topCorrelations = []
+  } = analysis;
+
+  const numSummary =
+    numCols.map(s => {
+
+      return `
+- ${s.name}
+  mean=${s.mean?.toFixed(2)}
+  median=${s.median?.toFixed(2)}
+  min=${s.min}
+  max=${s.max}
+`;
+
+    }).join('\n');
+
+  const strSummary =
+    strCols.map(s => {
+
+      const topVals =
+        (s.topValues || [])
+          .slice(0, 5)
+          .map(
+            t => `${t.value} (${t.count})`
+          )
+          .join(', ');
+
+      return `
+- ${s.name}
+  unique=${s.unique}
+  top=${topVals}
+`;
+
+    }).join('\n');
+
+  const corrSummary =
+    topCorrelations.map(c => {
+
+      return `
+- ${c.colA} ↔ ${c.colB}
+  correlation=${c.r}
+`;
+
+    }).join('\n');
+
+  const insightSummary =
+    insights.map(i => {
+
+      return `
+- ${i.title}
+  ${i.body}
+`;
+
+    }).join('\n');
+
+  return `
+You are DataLens AI.
+
+You are an expert data analyst.
+
+ONLY answer using the dataset information below.
+
+Dataset:
+${fileName}
+
+Rows:
+${rowCount}
+
+Columns:
+${colCount}
+
+Headers:
+${headers.join(', ')}
+
+Numeric Statistics:
+${numSummary || 'None'}
+
+Categorical Statistics:
+${strSummary || 'None'}
+
+Top Correlations:
+${corrSummary || 'None'}
+
+Insights:
+${insightSummary || 'None'}
+
+Rules:
+- be concise
+- be accurate
+- use statistics when possible
+- do not hallucinate
+- if data is unavailable, say so
+`;
 }
 
-// ── Chat UI Module ───────────────────────────────────────────
-const ChatUI = (() => {
+// ── POST /api/chat ───────────────────────────────────────────
+router.post('/', async (req, res) => {
 
-  let _session = null;
+  try {
 
-  // ── Init ──────────────────────────────────────────────────
-  function init(sessionId) {
+    const {
+      sessionId,
+      message,
+      chatId
+    } = req.body;
 
-    _session = new ChatSession(sessionId);
+    if (!message?.trim()) {
 
-    _loadHistory();
-
-    $('#chatInput')
-      .off('keydown')
-      .on('keydown', function (e) {
-
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          send();
-        }
-
+      return res.status(400).json({
+        error: 'Message required'
       });
 
-    $('#chatSendBtn')
-      .off('click')
-      .on('click', send);
-
-    $('#chatClearBtn')
-      .off('click')
-      .on('click', clearChat);
-
-    _buildSuggestions();
-  }
-
-  // ── Send Message ──────────────────────────────────────────
-  async function send() {
-
-    const $input = $('#chatInput');
-
-    const text = $input
-      .val()
-      .trim();
-
-    if (!text || _session?.streaming) {
-      return;
     }
 
-    $input.val('');
+    // ── Load analysis ───────────────────────────────────────
 
-    _appendMessage(
-      'user',
-      text
-    );
+    let analysis = null;
 
-    _session.addMessage(
-      'user',
-      text
-    );
+    if (sessionId) {
 
-    const $typing =
-      _appendTyping();
+      try {
 
-    _session.streaming = true;
-
-    _updateSendBtn(true);
-
-    try {
-
-      await _sendToBackend(
-        text,
-        $typing
-      );
-
-    } catch (err) {
-
-      $typing.remove();
-
-      _appendMessage(
-        'assistant',
-        `Error: ${err.message}`,
-        'error'
-      );
-
-    } finally {
-
-      _session.streaming = false;
-
-      _updateSendBtn(false);
-
-      $input.focus();
-    }
-  }
-
-  // ── Send to Backend ───────────────────────────────────────
-  async function _sendToBackend(
-    message,
-    $typingEl
-  ) {
-
-    const res = await fetch(
-      '/api/chat',
-      {
-        method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body: JSON.stringify({
-          sessionId:
-            _session.sessionId,
-
-          chatId:
-            _session.chatId,
-
-          message
-        })
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(
-        `Server error: ${res.status}`
-      );
-    }
-
-    const data =
-      await res.json();
-
-    $typingEl.remove();
-
-    const reply =
-      data.reply ||
-      'No response received';
-
-    _appendMessage(
-      'assistant',
-      reply
-    );
-
-    _session.addMessage(
-      'assistant',
-      reply
-    );
-  }
-
-  // ── Append Message ────────────────────────────────────────
-  function _appendMessage(
-    role,
-    content,
-    extraClass = ''
-  ) {
-
-    const isUser =
-      role === 'user';
-
-    const html = `
-      <div class="chat-msg ${isUser ? 'msg-user' : 'msg-bot'} ${extraClass}">
-        
-        <div class="msg-avatar">
-          ${isUser ? 'U' : 'AI'}
-        </div>
-
-        <div class="msg-body">
-
-          <div class="msg-content">
-            ${isUser
-        ? _escHtml(content)
-        : _renderMarkdown(content)
-      }
-          </div>
-
-          <div class="msg-time">
-            ${new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      })}
-          </div>
-
-        </div>
-
-      </div>
-    `;
-
-    const $el =
-      $(html).hide();
-
-    $('#chatMessages')
-      .append($el);
-
-    $el.fadeIn(180);
-
-    _scrollToBottom();
-
-    return $el;
-  }
-
-  // ── Typing Indicator ──────────────────────────────────────
-  function _appendTyping() {
-
-    const html = `
-      <div class="chat-msg msg-bot typing-msg">
-
-        <div class="msg-avatar">
-          AI
-        </div>
-
-        <div class="msg-body">
-          <div class="typing-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </div>
-
-      </div>
-    `;
-
-    const $el =
-      $(html).hide();
-
-    $('#chatMessages')
-      .append($el);
-
-    $el.slideDown(150);
-
-    _scrollToBottom();
-
-    return $el;
-  }
-
-  // ── Suggestions ───────────────────────────────────────────
-  function _buildSuggestions() {
-
-    if (!window._analysisData) {
-      return;
-    }
-
-    const data =
-      window._analysisData;
-
-    const numCols =
-      (data.headers || [])
-        .filter(
-          h => data.types?.[h]
-            === 'number'
-        );
-
-    const strCols =
-      (data.headers || [])
-        .filter(
-          h => data.types?.[h]
-            === 'string'
-        );
-
-    const suggestions = [
-
-      'What are the key insights from this dataset?',
-
-      numCols[0]
-        ? `What is the distribution of ${numCols[0]}?`
-        : null,
-
-      numCols[1]
-        ? `Is there a correlation between ${numCols[0]} and ${numCols[1]}?`
-        : null,
-
-      strCols[0]
-        ? `What are the most common values in ${strCols[0]}?`
-        : null,
-
-      'Are there any outliers?',
-
-      'Which columns have the most missing values?'
-
-    ]
-      .filter(Boolean)
-      .slice(0, 5);
-
-    const $chips =
-      $('#chatSuggestions');
-
-    $chips.empty();
-
-    suggestions.forEach(s => {
-
-      const $chip = $(`
-        <button class="suggestion-chip">
-          ${_escHtml(s)}
-        </button>
-      `);
-
-      $chip.on(
-        'click',
-        function () {
-
-          $('#chatInput')
-            .val(s);
-
-          send();
-
-          $chips.slideUp(200);
-        }
-      );
-
-      $chips.append($chip);
-
-    });
-
-    $chips
-      .hide()
-      .slideDown(300);
-  }
-
-  // ── Load Chat History ─────────────────────────────────────
-  async function _loadHistory() {
-
-    if (!_session?.chatId) {
-      return;
-    }
-
-    try {
-
-      const data =
-        await ApiClient
-          .getChatHistory(
-            _session.chatId
-          );
-
-      if (data.messages?.length) {
-
-        data.messages
-          .forEach(m => {
-
-            if (m.role !== 'system') {
-
-              _appendMessage(
-                m.role,
-                m.content
-              );
-
-            }
-
+        analysis =
+          await Analysis.findOne({
+            sessionId
           });
 
-        _session.messages =
-          data.messages;
+      } catch {
 
-        $('#chatSuggestions')
-          .hide();
+        analysis =
+          memStore.get(sessionId)
+          || null;
+
       }
+
+    }
+
+    // ── Load history ────────────────────────────────────────
+
+    let history = [];
+
+    if (chatId) {
+
+      try {
+
+        const log =
+          await ChatLog.findOne({
+            chatId
+          });
+
+        history =
+          log?.messages || [];
+
+      } catch {
+
+        history =
+          chatMemStore.get(chatId)
+          || [];
+
+      }
+
+    }
+
+    // ── Build Prompt ────────────────────────────────────────
+
+    const prompt = `
+
+${analysis
+        ? buildSystemPrompt(analysis)
+        : 'No dataset loaded.'
+      }
+
+Conversation History:
+
+${history.map(h =>
+        `${h.role}: ${h.content}`
+      ).join('\n')}
+
+User Question:
+
+${message}
+
+`;
+
+    // ── Gemini Request ──────────────────────────────────────
+
+    const result =
+      await model.generateContent(
+        prompt
+      );
+
+    const response =
+      await result.response;
+
+    const text =
+      response.text();
+
+    // ── Save chat history ───────────────────────────────────
+
+    await saveChatTurn(
+      chatId,
+      sessionId,
+      message,
+      text,
+      history
+    );
+
+    // ── Return response ─────────────────────────────────────
+
+    res.json({
+      reply: text
+    });
+
+  } catch (err) {
+
+    console.error(
+      'GEMINI ERROR:',
+      err
+    );
+
+    res.status(500).json({
+      error:
+        err.message
+        || 'AI response failed'
+    });
+
+  }
+
+});
+
+// ── Save Chat History ────────────────────────────────────────
+async function saveChatTurn(
+  chatId,
+  sessionId,
+  userMsg,
+  assistantMsg,
+  prevHistory
+) {
+
+  if (!chatId) {
+    return;
+  }
+
+  const updatedHistory = [
+
+    ...prevHistory,
+
+    {
+      role: 'user',
+      content: userMsg,
+      timestamp: new Date()
+    },
+
+    {
+      role: 'assistant',
+      content: assistantMsg,
+      timestamp: new Date()
+    }
+
+  ];
+
+  try {
+
+    await ChatLog.findOneAndUpdate(
+
+      { chatId },
+
+      {
+        chatId,
+        sessionId,
+
+        messages:
+          updatedHistory,
+
+        updatedAt:
+          new Date()
+      },
+
+      {
+        upsert: true,
+        new: true
+      }
+
+    );
+
+  } catch {
+
+    chatMemStore.set(
+      chatId,
+      updatedHistory
+    );
+
+  }
+
+}
+
+// ── GET Chat History ─────────────────────────────────────────
+router.get('/:chatId', async (req, res) => {
+
+  try {
+
+    const { chatId } =
+      req.params;
+
+    let messages = [];
+
+    try {
+
+      const log =
+        await ChatLog.findOne({
+          chatId
+        });
+
+      messages =
+        log?.messages || [];
 
     } catch {
 
-      // ignore
+      messages =
+        chatMemStore.get(chatId)
+        || [];
 
     }
+
+    res.json({
+      chatId,
+      messages
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      error:
+        err.message
+    });
+
   }
 
-  // ── Clear Chat ────────────────────────────────────────────
-  async function clearChat() {
+});
 
-    if (
-      !confirm(
-        'Clear this conversation?'
-      )
-    ) {
-      return;
+// ── DELETE Chat History ──────────────────────────────────────
+router.delete('/:chatId', async (req, res) => {
+
+  try {
+
+    const { chatId } =
+      req.params;
+
+    try {
+
+      await ChatLog.deleteOne({
+        chatId
+      });
+
+    } catch {
+
+      chatMemStore.delete(
+        chatId
+      );
+
     }
 
-    $('#chatMessages')
-      .fadeOut(
-        200,
+    res.json({
+      deleted: true
+    });
 
-        async function () {
+  } catch (err) {
 
-          $(this)
-            .empty()
-            .fadeIn(200);
+    res.status(500).json({
+      error:
+        err.message
+    });
 
-          _session =
-            new ChatSession(
-              _session?.sessionId
-            );
-
-          _buildSuggestions();
-
-          try {
-
-            await fetch(
-              `/api/chat/${_session.chatId}`,
-              {
-                method: 'DELETE'
-              }
-            );
-
-          } catch { }
-
-        }
-      );
   }
 
-  // ── Markdown Renderer ─────────────────────────────────────
-  function _renderMarkdown(
-    text
-  ) {
+});
 
-    return _escHtml(text)
-
-      .replace(
-        /\*\*(.+?)\*\*/g,
-        '<strong>$1</strong>'
-      )
-
-      .replace(
-        /\*(.+?)\*/g,
-        '<em>$1</em>'
-      )
-
-      .replace(
-        /`(.+?)`/g,
-        '<code>$1</code>'
-      )
-
-      .replace(
-        /^[-•] (.+)$/gm,
-        '<div class="md-li">• $1</div>'
-      )
-
-      .replace(
-        /\n/g,
-        '<br>'
-      );
-  }
-
-  // ── Escape HTML ───────────────────────────────────────────
-  function _escHtml(str) {
-
-    return String(str)
-
-      .replace(
-        /&/g,
-        '&amp;'
-      )
-
-      .replace(
-        /</g,
-        '&lt;'
-      )
-
-      .replace(
-        />/g,
-        '&gt;'
-      )
-
-      .replace(
-        /"/g,
-        '&quot;'
-      );
-  }
-
-  // ── Scroll ────────────────────────────────────────────────
-  function _scrollToBottom() {
-
-    const el =
-      document.getElementById(
-        'chatMessages'
-      );
-
-    if (el) {
-      el.scrollTop =
-        el.scrollHeight;
-    }
-  }
-
-  // ── Send Button State ─────────────────────────────────────
-  function _updateSendBtn(
-    loading
-  ) {
-
-    $('#chatSendBtn')
-
-      .prop(
-        'disabled',
-        loading
-      )
-
-      .text(
-        loading
-          ? '...'
-          : 'Send'
-      );
-  }
-
-  return {
-    init,
-    send,
-    clearChat
-  };
-
-})();
-
-// ── Chat History API ─────────────────────────────────────────
-ApiClient.getChatHistory =
-  async function (chatId) {
-
-    const res =
-      await fetch(
-        `/api/chat/${chatId}`
-      );
-
-    if (!res.ok) {
-      throw new Error(
-        'Could not load chat history'
-      );
-    }
-
-    return res.json();
-  };
+module.exports = router;
