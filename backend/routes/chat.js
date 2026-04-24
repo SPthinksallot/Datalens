@@ -4,21 +4,21 @@
 // ============================================================
 
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
+const OpenAI = require('openai');
 const Analysis = require('../models/Analysis');
 const ChatLog = require('../models/ChatLog');
 const { memStore } = require('./analyze');
 
 const router = express.Router();
 
-// ── Gemini Setup ─────────────────────────────────────────────
-const genAI = new GoogleGenerativeAI(
-  process.env.GEMINI_API_KEY
-);
+const client = new OpenAI({
 
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.0-flash'
+  baseURL:
+    'https://openrouter.ai/api/v1',
+
+  apiKey:
+    process.env.OPENROUTER_API_KEY
+
 });
 
 // ── Memory fallback ──────────────────────────────────────────
@@ -215,16 +215,28 @@ ${message}
 
     // ── Gemini Request ──────────────────────────────────────
 
-    const result =
-      await model.generateContent(
-        prompt
-      );
+    const completion =
+      await client.chat.completions.create({
 
-    const response =
-      await result.response;
+        model:
+          'openai/gpt-4o-mini',
+
+        messages: [
+
+          {
+            role: 'user',
+            content: prompt
+          }
+
+        ]
+
+      });
 
     const text =
-      response.text();
+      completion.choices[0]
+        ?.message
+        ?.content
+      || 'No response';
 
     // ── Save history ────────────────────────────────────────
 
