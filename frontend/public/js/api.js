@@ -21,7 +21,7 @@ class ApiClient {
     // Unit 1: HTTP POST method
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
-      body:   formData
+      body: formData
       // No Content-Type header — browser sets it with boundary for multipart
     });
 
