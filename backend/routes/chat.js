@@ -1,6 +1,6 @@
 // ============================================================
 // backend/routes/chat.js
-// Gemini AI Backend Route
+// AI Backend Route
 // ============================================================
 
 const express = require('express');
@@ -213,7 +213,7 @@ ${message}
 
 `;
 
-    // ── Gemini Request ──────────────────────────────────────
+    // ── Request ──────────────────────────────────────
 
     const completion =
       await client.chat.completions.create({
@@ -265,7 +265,7 @@ ${message}
   } catch (err) {
 
     console.error(
-      'GEMINI ERROR:',
+      'OPENROUTER ERROR:',
       err
     );
 

@@ -1,5 +1,5 @@
 // ============================================================
-// Frontend Chat UI — Gemini AI Version
+// Frontend Chat UI — OpenRouter AI Version
 // File: frontend/public/js/chat.js
 // ============================================================
 
