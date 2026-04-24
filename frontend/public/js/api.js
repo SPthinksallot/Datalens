@@ -8,7 +8,7 @@
 'use strict';
 
 // Unit 1: Base URL — URL structure
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'https://datalens-nd3e.onrender.com';
 
 class ApiClient {
   // Unit 2: async/await, Promise
