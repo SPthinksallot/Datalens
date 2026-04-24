@@ -4,13 +4,13 @@
 //         fs module (read uploaded file), EventEmitter
 // ============================================================
 
-const express  = require('express');
-const path     = require('path');
-const fs       = require('fs');
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const Analysis = require('../models/Analysis');
 const { CSVParser, DataAnalyzer } = require('../services/statsService');
-const { appEvents } = require('../server');
+const appEvents = require('../events');
 
 const router = express.Router();
 const uploadDir = path.join(__dirname, '../uploads');
@@ -35,7 +35,7 @@ router.post('/', async (req, res, next) => {
     }
 
     const text = fs.readFileSync(filePath, 'utf-8');
-    const ext  = path.extname(originalName).toLowerCase();
+    const ext = path.extname(originalName).toLowerCase();
 
     // Parse the file — Unit 2: ES6 class usage
     let parsed;
@@ -60,16 +60,16 @@ router.post('/', async (req, res, next) => {
     });
 
     const { topPairs } = analyzer.correlationMatrix();
-    const insights     = analyzer.generateInsights();
-    const sum          = analyzer.summary();
+    const insights = analyzer.generateInsights();
+    const sum = analyzer.summary();
 
     const record = {
       sessionId: sessionId || uuidv4(),
-      fileName:  originalName,
-      fileSize:  fileSize || 0,
-      rowCount:  parsed.rows.length,
-      colCount:  parsed.headers.length,
-      headers:   parsed.headers,
+      fileName: originalName,
+      fileSize: fileSize || 0,
+      rowCount: parsed.rows.length,
+      colCount: parsed.headers.length,
+      headers: parsed.headers,
       columnStats,
       topCorrelations: topPairs,
       insights,
@@ -93,16 +93,16 @@ router.post('/', async (req, res, next) => {
 
     // Unit 1: HTTP 201 Created — full analysis response
     res.status(201).json({
-      sessionId:  record.sessionId,
-      fileName:   originalName,
-      rowCount:   sum.total,
-      colCount:   parsed.headers.length,
-      numCols:    sum.numCols,
-      strCols:    sum.strCols,
+      sessionId: record.sessionId,
+      fileName: originalName,
+      rowCount: sum.total,
+      colCount: parsed.headers.length,
+      numCols: sum.numCols,
+      strCols: sum.strCols,
       totalMissing: sum.totalMissing,
       duplicates: sum.dupes,
-      headers:    parsed.headers,
-      types:      analyzer.types,
+      headers: parsed.headers,
+      types: analyzer.types,
       columnStats,
       correlationMatrix: analyzer.correlationMatrix().matrix,
       topCorrelations: topPairs,
