@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<!-- Unit 1: HTML5 Document -->
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Unit 1: URL structure — linking external files (assets, scripts, styles) -->
+  <title>DataLens — CSV Analyzer</title>
+
+  <!-- Unit 3: Bootstrap CSS — responsive grid, components -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Unit 1: External CSS file -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+
+  <!-- Unit 1: Semantic HTML5 Elements -->
+  <div id="app">
+
+    <!-- Unit 1: <header> semantic element -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-icon">◈</span>
+        <span class="brand-name">DataLens</span>
+        <span class="brand-tag">CSV Analyzer</span>
+      </div>
+      <div class="header-file" id="headerFileInfo" style="display:none">
+        <span class="file-name" id="hFileName"></span>
+        <span class="file-meta" id="hFileMeta"></span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-theme" id="btnTheme" title="Toggle theme" onclick="Theme.toggle()">☀</button>
+        <button class="btn-header" id="btnHistory" onclick="App.toggleHistory()">
+          <span>History</span>
+          <span class="hist-count" id="histCount" style="display:none">0</span>
+        </button>
+        <button class="btn-header btn-upload-new" id="btnNew" style="display:none" onclick="App.reset()">New
+          file</button>
+      </div>
+    </header>
+
+    <!-- Unit 1: <nav> semantic element -->
+    <nav class="app-nav" id="appNav" style="display:none">
+      <button class="nav-tab active" data-tab="overview">Overview</button>
+      <button class="nav-tab" data-tab="stats">Statistics</button>
+      <button class="nav-tab" data-tab="charts">Charts</button>
+      <button class="nav-tab" data-tab="correlation">Correlation</button>
+      <button class="nav-tab" data-tab="data">Data Table</button>
+      <button class="nav-tab" data-tab="insights">
+        Insights
+        <span class="ins-badge" id="insBadge" style="display:none"></span>
+      </button>
+      <button class="nav-tab" data-tab="chat">
+        Ask AI
+        <span class="chat-badge" id="chatBadge">NEW</span>
+      </button>
+    </nav>
+
+    <!-- Unit 1: <main> semantic element -->
+    <main class="app-main">
+
+      <!-- ── Upload Panel ── Redesigned Hero Upload Page ── -->
+      <section class="panel active" id="panel-upload">
+
+        <!-- Animated background particles -->
+        <div class="upload-bg" aria-hidden="true">
+          <div class="particle" style="--x:10%;--y:20%;--d:6s;--s:0.4"></div>
+          <div class="particle" style="--x:80%;--y:15%;--d:8s;--s:0.6"></div>
+          <div class="particle" style="--x:25%;--y:70%;--d:7s;--s:0.3"></div>
+          <div class="particle" style="--x:65%;--y:60%;--d:9s;--s:0.5"></div>
+          <div class="particle" style="--x:50%;--y:35%;--d:5s;--s:0.7"></div>
+          <div class="particle" style="--x:90%;--y:80%;--d:10s;--s:0.3"></div>
+          <div class="particle" style="--x:5%;--y:85%;--d:6.5s;--s:0.5"></div>
+          <div class="particle" style="--x:40%;--y:90%;--d:11s;--s:0.4"></div>
+          <div class="orb orb-1" aria-hidden="true"></div>
+          <div class="orb orb-2" aria-hidden="true"></div>
+        </div>
+
+        <div class="upload-hero">
+
+          <!-- Hero title section -->
+          <div class="hero-title-block">
+            <div class="hero-eyebrow">
+              <span class="hero-dot"></span>
+              <span>Intelligent Data Analysis</span>
+              <span class="hero-dot"></span>
+            </div>
+            <h1 class="hero-heading">
+              <span class="hero-gradient-text">DataLens</span>
+            </h1>
+            <p class="hero-sub">Transform raw data into stunning insights — instantly.<br>Upload your file and let AI do the rest.</p>
+          </div>
+
+          <!-- Upload zone -->
+          <div class="hero-upload-area">
+            <form id="uploadForm" novalidate>
+              <div class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" accept=".csv,.tsv,.json,.txt" required>
+
+                <!-- Animated ring -->
+                <div class="dz-ring" aria-hidden="true"></div>
+
+                <div class="dz-inner">
+                  <div class="dz-upload-icon">
+                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3" class="dz-svg-ring"/>
+                      <path d="M32 42V22M32 22L24 30M32 22L40 30" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="dz-svg-arrow"/>
+                    </svg>
+                  </div>
+                  <div class="dz-title">Drop your file here</div>
+                  <div class="dz-sub">or <span class="dz-browse">browse to upload</span></div>
+                  <div class="dz-formats">
+                    <span class="fmt-chip">.csv</span>
+                    <span class="fmt-chip">.tsv</span>
+                    <span class="fmt-chip">.json</span>
+                    <span class="fmt-chip">.txt</span>
+                  </div>
+                  <div class="dz-limit">Up to 50 MB</div>
+                </div>
+              </div>
+            </form>
+
+            <!-- Progress bar -->
+            <div class="upload-progress" id="uploadProgress" style="display:none">
+              <div class="progress-label" id="progressLabel">Uploading…</div>
+              <div class="progress-track">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+            </div>
+
+            <!-- Sample files -->
+            <div class="sample-row">
+              <span class="sample-label">✦ Try a sample dataset:</span>
+              <button class="btn-sample" id="sampleSales" onclick="App.loadSample('sales')">
+                <span class="sample-icon">📊</span> Sales data
+              </button>
+              <button class="btn-sample" id="sampleStudents" onclick="App.loadSample('students')">
+                <span class="sample-icon">🎓</span> Students
+              </button>
+              <button class="btn-sample" id="sampleProducts" onclick="App.loadSample('products')">
+                <span class="sample-icon">📦</span> Products
+              </button>
+            </div>
+          </div>
+
+          <!-- Feature cards -->
+          <div class="hero-features">
+            <div class="feature-card" style="--fc-delay:0s">
+              <div class="fc-icon-wrap">
+                <div class="fc-icon">🔒</div>
+              </div>
+              <div class="fc-title">100% Local</div>
+              <div class="fc-body">Parsed entirely in your browser. Nothing leaves your device until you choose to analyze.</div>
+            </div>
+            <div class="feature-card" style="--fc-delay:0.1s">
+              <div class="fc-icon-wrap">
+                <div class="fc-icon">📜</div>
+              </div>
+              <div class="fc-title">History Saved</div>
+              <div class="fc-body">Every analysis is stored on the backend so you can revisit any dataset at any time.</div>
+            </div>
+            <div class="feature-card" style="--fc-delay:0.2s">
+              <div class="fc-icon-wrap">
+                <div class="fc-icon">🤖</div>
+              </div>
+              <div class="fc-title">AI Insights</div>
+              <div class="fc-body">Auto-generated stats, correlations, outlier detection, and a local AI you can chat with.</div>
+            </div>
+            <div class="feature-card" style="--fc-delay:0.3s">
+              <div class="fc-icon-wrap">
+                <div class="fc-icon">📈</div>
+              </div>
+              <div class="fc-title">Rich Charts</div>
+              <div class="fc-body">Histograms, scatter plots, correlation heatmaps — all interactive and export-ready.</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── Overview Panel ── -->
+      <section class="panel" id="panel-overview">
+        <div class="panel-title">Dataset overview</div>
+        <!-- Unit 3: Bootstrap grid system -->
+        <div class="row g-3 mb-4" id="overviewCards"></div>
+        <div class="panel-title">Column profiles</div>
+        <div class="col-grid" id="colGrid"></div>
+      </section>
+
+      <!-- ── Statistics Panel ── -->
+      <section class="panel" id="panel-stats">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="panel-title mb-0">Column statistics</div>
+          <div class="filter-pills">
+            <button class="pill active" data-filter="all" onclick="UI.filterStats(this,'all')">All</button>
+            <button class="pill" data-filter="number" onclick="UI.filterStats(this,'number')">Numeric</button>
+            <button class="pill" data-filter="string" onclick="UI.filterStats(this,'string')">Categorical</button>
+          </div>
+        </div>
+        <div id="statsContent"></div>
+      </section>
+
+      <!-- ── Charts Panel ── -->
+      <section class="panel" id="panel-charts">
+        <div class="chart-toolbar">
+          <div class="ctrl-group">
+            <label class="ctrl-lbl">Column</label>
+            <select id="chartCol" onchange="ChartUI.update()"></select>
+          </div>
+          <div class="ctrl-group">
+            <label class="ctrl-lbl">Chart type</label>
+            <select id="chartType" onchange="ChartUI.update()">
+              <option value="histogram">Histogram</option>
+              <option value="bar">Bar chart</option>
+              <option value="line">Line chart</option>
+              <option value="scatter">Scatter plot</option>
+              <option value="box">Box plot</option>
+              <option value="pie">Pie / Donut</option>
+            </select>
+          </div>
+          <div class="ctrl-group" id="yAxisGroup" style="display:none">
+            <label class="ctrl-lbl">Y axis</label>
+            <select id="chartYCol" onchange="ChartUI.update()"></select>
+          </div>
+          <div class="ctrl-group">
+            <label class="ctrl-lbl">Bins</label>
+            <select id="chartBins" onchange="ChartUI.update()">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title" id="chartTitle">Select a column</div>
+              <div class="chart-sub" id="chartSubtitle"></div>
+            </div>
+            <div id="outlierBadge"></div>
+          </div>
+          <canvas id="mainChart" style="max-height:400px"></canvas>
+        </div>
+        <div class="spacer-sm"></div>
+        <div class="panel-title">Distribution stats</div>
+        <div class="row g-2" id="distStats"></div>
+      </section>
+
+      <!-- ── Correlation Panel ── -->
+      <section class="panel" id="panel-correlation">
+        <div class="panel-title">Correlation matrix</div>
+        <p class="panel-desc">Pearson r between all numeric columns. −1 = perfect negative, 0 = none, +1 = perfect
+          positive.</p>
+        <div class="chart-card mb-4" id="heatmapCard">
+          <div class="heatmap-scroll" id="heatmapWrap"></div>
+        </div>
+        <div class="panel-title">Strongest pairs</div>
+        <div id="corrPairs"></div>
+      </section>
+
+      <!-- ── Data Table Panel ── Unit 2: DOM manipulation ── -->
+      <section class="panel" id="panel-data">
+        <div class="table-toolbar">
+          <div class="ctrl-group">
+            <label class="ctrl-lbl">Search</label>
+            <!-- Unit 1: HTML5 input -->
+            <input type="text" id="tableSearch" placeholder="Filter rows…" oninput="TableUI.search(this.value)">
+          </div>
+          <div class="ctrl-group">
+            <label class="ctrl-lbl">Rows</label>
+            <select id="pageSize" onchange="TableUI.setPageSize(+this.value)">
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="ctrl-group" style="margin-left:auto">
+            <button class="btn-sm" onclick="TableUI.prev()">← Prev</button>
+            <span class="page-info" id="pageInfo"></span>
+            <button class="btn-sm" onclick="TableUI.next()">Next →</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <!-- Unit 3: Bootstrap table classes -->
+          <table class="data-table" id="dataTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Insights Panel ── -->
+      <section class="panel" id="panel-insights">
+        <div class="panel-title">Auto-generated insights</div>
+        <div id="insightsList"></div>
+      </section>
+
+      <!-- ── Chat Panel ── Unit 2+3+4: LLM chatbot ── -->
+      <section class="panel" id="panel-chat">
+        <div class="chat-layout">
+
+          <!-- Status bar -->
+          <div class="ollama-status" id="ollamaStatus" style="display:none"></div>
+
+          <!-- Messages window -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-welcome">
+              <div class="welcome-icon">◈</div>
+              <div class="welcome-title">DataLens AI</div>
+              <div class="welcome-sub">Powered by Ollama · runs 100% locally · no API key needed</div>
+              <div class="welcome-sub" style="margin-top:4px">Upload and analyze a dataset, then ask me anything about
+                it.</div>
+            </div>
+          </div>
+
+          <!-- Suggestion chips -->
+          <div class="chat-suggestions" id="chatSuggestions" style="display:none"></div>
+
+          <!-- Input bar — Unit 1: HTML5 form elements -->
+          <div class="chat-input-bar">
+            <textarea id="chatInput" class="chat-textarea"
+              placeholder="Ask about your dataset… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+            <div class="chat-actions">
+              <button class="btn-chat-clear" id="chatClearBtn" title="Clear conversation">✕</button>
+              <button class="btn-chat-send" id="chatSendBtn">Send</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main><!-- /main -->
+
+    <!-- Unit 1: <footer> semantic element -->
+    <footer class="app-footer">
+      DataLens · Built with HTML5 · CSS3 · JavaScript ES6 · jQuery · Bootstrap · Node.js · Express · MongoDB
+    </footer>
+
+  </div><!-- /#app -->
+
+  <!-- ── History Drawer ── -->
+  <div class="history-overlay" id="historyOverlay" onclick="App.toggleHistory()"></div>
+  <aside class="history-drawer" id="historyDrawer">
+    <div class="drawer-header">
+      <span class="drawer-title">Analysis history</span>
+      <button class="drawer-close" onclick="App.toggleHistory()">✕</button>
+    </div>
+    <div class="drawer-toolbar">
+      <button class="btn-sm" onclick="HistoryUI.load()">Refresh</button>
+      <button class="btn-sm btn-danger-sm" onclick="HistoryUI.clearAll()">Clear all</button>
+    </div>
+    <div id="historyList" class="drawer-body"></div>
+  </aside>
+
+  <!-- Toast container -->
+  <div class="toast-stack" id="toastStack"></div>
+
+  <!-- ─── Scripts ─────────────────────────────────────────────── -->
+  <!-- Unit 3: Bootstrap JS bundle (includes Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Unit 3: jQuery -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Unit 1: External JS files (project structure) -->
+  <script src="js/api.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+
+</html>
