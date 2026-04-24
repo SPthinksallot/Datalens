@@ -1,90 +1,105 @@
 // ============================================================
-// Unit 1+4: API Client — HTTP & HTTPS, Request/Response,
-//           Methods (GET, POST, DELETE), Status Codes,
-//           URL Structure, Query Parameters
-// Unit 2: Promises, async/await, ES6 classes
+// API Client — FINAL PRODUCTION VERSION
 // ============================================================
 
 'use strict';
 
-// Unit 1: Base URL — URL structure
+// ✅ Your LIVE backend URL
 const API_BASE = 'https://datalens-nd3e.onrender.com';
 
 class ApiClient {
-  // Unit 2: async/await, Promise
 
-  // Unit 4: POST /api/upload — multipart/form-data
+  // ✅ Upload CSV
   static async uploadFile(file) {
-    const formData = new FormData(); // Unit 1: HTML5 FormData
+    const formData = new FormData();
     formData.append('file', file);
 
-    // Unit 1: HTTP POST method
-    const res = await fetch(`${API_BASE}/upload`, {
+    const res = await fetch(`${API_BASE}/api/upload`, {
       method: 'POST',
       body: formData
-      // No Content-Type header — browser sets it with boundary for multipart
     });
 
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || `Upload failed: ${res.status}`);
     }
-    return res.json(); // Unit 1: JSON response body
+
+    return res.json();
   }
 
-  // Unit 4: POST /api/analyze — JSON body
+  // ✅ Analyze file
   static async analyzeFile(payload) {
-    const res = await fetch(`${API_BASE}/analyze`, {
+    const res = await fetch(`${API_BASE}/api/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }, // Unit 1: HTTP headers
-      body: JSON.stringify(payload)                     // Unit 1: Request body
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || `Analysis failed: ${res.status}`);
     }
+
     return res.json();
   }
 
-  // Unit 1: GET /api/history?limit=20&page=0 — query parameters
+  // ✅ Get history
   static async getHistory(limit = 20, page = 0) {
-    // Unit 1: URL with query parameters
-    const url = `${API_BASE}/history?limit=${limit}&page=${page}`;
+    const url = `${API_BASE}/api/history?limit=${limit}&page=${page}`;
+
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to load history');
+
+    if (!res.ok) {
+      throw new Error('Failed to load history');
+    }
+
     return res.json();
   }
 
-  // Unit 1: GET /api/history/:sessionId — URL parameter
+  // ✅ Get single analysis
   static async getAnalysis(sessionId) {
-    const res = await fetch(`${API_BASE}/history/${sessionId}`);
-    if (!res.ok) throw new Error(`Analysis not found: ${res.status}`); // Unit 1: Status codes
+    const res = await fetch(`${API_BASE}/api/history/${sessionId}`);
+
+    if (!res.ok) {
+      throw new Error(`Analysis not found: ${res.status}`);
+    }
+
     return res.json();
   }
 
-  // Unit 1: DELETE HTTP method
+  // ✅ Delete one history
   static async deleteHistory(sessionId) {
-    const res = await fetch(`${API_BASE}/history/${sessionId}`, {
-      method: 'DELETE'   // Unit 1: DELETE HTTP method
+    const res = await fetch(`${API_BASE}/api/history/${sessionId}`, {
+      method: 'DELETE'
     });
-    if (!res.ok) throw new Error('Delete failed');
+
+    if (!res.ok) {
+      throw new Error('Delete failed');
+    }
+
     return res.json();
   }
 
+  // ✅ Clear all history
   static async clearAllHistory() {
-    const res = await fetch(`${API_BASE}/history`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Clear failed');
+    const res = await fetch(`${API_BASE}/api/history`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      throw new Error('Clear failed');
+    }
+
     return res.json();
   }
 
-  // Unit 1: GET /api/health — server health check
+  // ✅ Health check
   static async health() {
-    const res = await fetch(`${API_BASE}/health`);
+    const res = await fetch(`${API_BASE}/api/health`);
     return res.json();
   }
 
-  // Unit 4: Upload a blob as CSV (used by sample data generator)
+  // ✅ Upload blob (sample data)
   static async uploadBlob(blob, name) {
     const file = new File([blob], name, { type: 'text/csv' });
     return ApiClient.uploadFile(file);
