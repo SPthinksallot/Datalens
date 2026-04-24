@@ -11,7 +11,7 @@
 // ── Theme toggle — Unit 1: CSS custom properties switching ────
 const Theme = (() => {
   // Unit 2: localStorage, string methods
-  const DARK  = 'dark';
+  const DARK = 'dark';
   const LIGHT = 'light';
 
   function init() {
@@ -61,10 +61,10 @@ const App = (() => {
 
       // Lazy-render on demand
       if (tab === 'correlation') UI.buildCorrelation(window._analysisData);
-      if (tab === 'insights')    UI.buildInsights(window._analysisData);
-      if (tab === 'data')        TableUI.init(window._analysisData);
-      if (tab === 'charts')      ChartUI.update();
-      if (tab === 'chat')        ChatUI.init(window._analysisData?.sessionId);
+      if (tab === 'insights') UI.buildInsights(window._analysisData);
+      if (tab === 'data') TableUI.init(window._analysisData);
+      if (tab === 'charts') ChartUI.update();
+      if (tab === 'chat') ChatUI.init(window._analysisData?.sessionId);
     });
 
     // Unit 3: jQuery drag-drop events
@@ -105,7 +105,7 @@ const App = (() => {
   async function handleFile(file) {
     // Unit 2: string method endsWith, includes
     const name = file.name.toLowerCase();
-    const ok   = ['.csv','.tsv','.json','.txt'].some(ext => name.endsWith(ext));
+    const ok = ['.csv', '.tsv', '.json', '.txt'].some(ext => name.endsWith(ext));
     if (!ok) { toast('Unsupported file type', 'error'); return; }
     if (file.size > 52_428_800) { toast('File too large (max 50 MB)', 'error'); return; }
 
@@ -118,10 +118,10 @@ const App = (() => {
 
       // Unit 4: POST /api/analyze
       const data = await ApiClient.analyzeFile({
-        sessionId:    _uploadMeta.sessionId,
-        storedName:   _uploadMeta.storedName,
+        sessionId: _uploadMeta.sessionId,
+        storedName: _uploadMeta.storedName,
         originalName: _uploadMeta.originalName,
-        fileSize:     _uploadMeta.size
+        fileSize: _uploadMeta.size
       });
 
       setProgress(true, 'Done!', 100);
@@ -163,7 +163,10 @@ const App = (() => {
       ChartUI.populate(data);
       HistoryUI.load();
 
-      // Navigate to overview — Unit 3: jQuery trigger
+      // Initialize AI chat
+      ChatUI.init(data.sessionId);
+
+      // Navigate to overview
       $('[data-tab="overview"]').trigger('click');
     });
   }
@@ -216,45 +219,45 @@ const App = (() => {
 
     if (name === 'sales') {
       csv = 'Month,Region,Product,Units_Sold,Revenue,Profit,Discount_Pct,Rating\n';
-      const regions  = ['North','South','East','West'];
-      const products = ['Widget A','Widget B','Gadget X','Gadget Y','Pro Pack'];
-      const months   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const regions = ['North', 'South', 'East', 'West'];
+      const products = ['Widget A', 'Widget B', 'Gadget X', 'Gadget Y', 'Pro Pack'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       for (let i = 0; i < 150; i++) {
         // Unit 2: Math.random, Math.floor
-        const units    = Math.floor(Math.random() * 500 + 50);
-        const price    = Math.random() * 80 + 20;
+        const units = Math.floor(Math.random() * 500 + 50);
+        const price = Math.random() * 80 + 20;
         const discount = Math.random() * 25;
-        const rev      = +(units * price * (1 - discount / 100)).toFixed(2);
-        const profit   = +(rev * (Math.random() * 0.3 + 0.1)).toFixed(2);
-        const rating   = +(Math.random() * 2 + 3).toFixed(1);
+        const rev = +(units * price * (1 - discount / 100)).toFixed(2);
+        const profit = +(rev * (Math.random() * 0.3 + 0.1)).toFixed(2);
+        const rating = +(Math.random() * 2 + 3).toFixed(1);
         // Unit 2: template literal
         csv += `${months[i % 12]},${regions[i % 4]},${products[i % 5]},${units},${rev},${profit},${discount.toFixed(1)},${rating}\n`;
       }
 
     } else if (name === 'students') {
       csv = 'StudentID,Math,Science,English,Attendance,Grade,StudyHrs\n';
-      const grades = ['A','B','C','D','F'];
+      const grades = ['A', 'B', 'C', 'D', 'F'];
       for (let i = 0; i < 100; i++) {
-        const math  = Math.floor(Math.random() * 50 + 50);
-        const sci   = Math.floor(math * 0.8 + Math.random() * 30);
-        const eng   = Math.floor(Math.random() * 40 + 55);
-        const att   = +(Math.random() * 30 + 70).toFixed(1);
+        const math = Math.floor(Math.random() * 50 + 50);
+        const sci = Math.floor(math * 0.8 + Math.random() * 30);
+        const eng = Math.floor(Math.random() * 40 + 55);
+        const att = +(Math.random() * 30 + 70).toFixed(1);
         const study = +(Math.random() * 6 + 1).toFixed(1);
-        const avg   = (math + sci + eng) / 3;
+        const avg = (math + sci + eng) / 3;
         const grade = avg > 85 ? 'A' : avg > 70 ? 'B' : avg > 60 ? 'C' : avg > 50 ? 'D' : 'F';
-        csv += `S${String(i+1).padStart(3,'0')},${math},${sci},${eng},${att},${grade},${study}\n`;
+        csv += `S${String(i + 1).padStart(3, '0')},${math},${sci},${eng},${att},${grade},${study}\n`;
       }
 
     } else if (name === 'products') {
       csv = 'ProductID,Category,Price,Stock,Rating,Reviews,Weight\n';
-      const cats = ['Electronics','Clothing','Food','Sports','Books'];
+      const cats = ['Electronics', 'Clothing', 'Food', 'Sports', 'Books'];
       for (let i = 0; i < 120; i++) {
-        const price   = +(Math.random() * 490 + 10).toFixed(2);
-        const stock   = Math.floor(Math.random() * 500);
-        const rating  = +(Math.random() * 2 + 3).toFixed(1);
+        const price = +(Math.random() * 490 + 10).toFixed(2);
+        const stock = Math.floor(Math.random() * 500);
+        const rating = +(Math.random() * 2 + 3).toFixed(1);
         const reviews = Math.floor(Math.random() * 2000);
-        const weight  = +(Math.random() * 9 + 0.1).toFixed(2);
-        csv += `P${String(i+1).padStart(4,'0')},${cats[i%5]},${price},${stock},${rating},${reviews},${weight}\n`;
+        const weight = +(Math.random() * 9 + 0.1).toFixed(2);
+        csv += `P${String(i + 1).padStart(4, '0')},${cats[i % 5]},${price},${stock},${rating},${reviews},${weight}\n`;
       }
     }
 
