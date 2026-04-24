@@ -3,36 +3,26 @@
 // Covers: Express setup, middleware, routing, HTTP methods,
 //         built-in modules (path, os, events), nodemon
 // ============================================================
+const appEvents = require('./events');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');          // Unit 4: built-in path module
+const os = require('os');            // Unit 4: built-in os module
 
-const express    = require('express');
-const cors       = require('cors');
-const path       = require('path');          // Unit 4: built-in path module
-const os         = require('os');            // Unit 4: built-in os module
-const { EventEmitter } = require('events'); // Unit 4: Node.js EventEmitter
-
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Export early to resolve circular dependencies in routes
 module.exports = app;
 
-// ─── Unit 4: Node.js EventEmitter ────────────────────────────
-const appEvents = new EventEmitter();
-appEvents.on('file:uploaded', (info) => {
-  console.log(`[EVENT] File uploaded: ${info.filename} (${info.size} bytes)`);
-});
-appEvents.on('analysis:done', (info) => {
-  console.log(`[EVENT] Analysis complete for session: ${info.sessionId}`);
-});
-module.exports.appEvents = appEvents;       // shared across routes
 
-const analyzeRouter  = require('./routes/analyze').router;
-const historyRouter  = require('./routes/history');
-const uploadRouter   = require('./routes/upload');
-const chatRouter     = require('./routes/chat');
-const errorHandler   = require('./middleware/errorHandler');
-const requestLogger  = require('./middleware/requestLogger');
-const connectDB      = require('./models/db');
+const analyzeRouter = require('./routes/analyze').router;
+const historyRouter = require('./routes/history');
+const uploadRouter = require('./routes/upload');
+const chatRouter = require('./routes/chat');
+const errorHandler = require('./middleware/errorHandler');
+const requestLogger = require('./middleware/requestLogger');
+const connectDB = require('./models/db');
 
 // ─── Unit 4: Middleware stack ─────────────────────────────────
 app.use(cors({ origin: '*' }));             // allow frontend dev server
@@ -45,17 +35,17 @@ app.use(express.static(path.join(__dirname, '../frontend/public')));
 
 // ─── Unit 4: Routes ───────────────────────────────────────────
 // HTTP Methods: POST (upload/analyze), GET (history), DELETE (history)
-app.use('/api/upload',   uploadRouter);
-app.use('/api/analyze',  analyzeRouter);
-app.use('/api/history',  historyRouter);
-app.use('/api/chat',     chatRouter);
+app.use('/api/upload', uploadRouter);
+app.use('/api/analyze', analyzeRouter);
+app.use('/api/history', historyRouter);
+app.use('/api/chat', chatRouter);
 
 // Health check endpoint — GET /api/health
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    uptime:  Math.floor(process.uptime()),
-    memory:  os.freemem(),          // Unit 4: os module
+    uptime: Math.floor(process.uptime()),
+    memory: os.freemem(),          // Unit 4: os module
     platform: os.platform(),
     nodeVersion: process.version,
     timestamp: new Date().toISOString()

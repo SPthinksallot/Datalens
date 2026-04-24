@@ -4,11 +4,11 @@
 // ============================================================
 
 const express = require('express');
-const multer  = require('multer');
-const path    = require('path');
-const fs      = require('fs');          // Unit 4: built-in fs module
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');          // Unit 4: built-in fs module
 const { v4: uuidv4 } = require('uuid');
-const { appEvents } = require('../server');
+const appEvents = require('../event');
 
 const router = express.Router();
 
@@ -18,7 +18,7 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename:    (req, file, cb) => {
+  filename: (req, file, cb) => {
     const unique = `${uuidv4()}-${file.originalname}`;
     cb(null, unique);
   }
@@ -51,7 +51,7 @@ router.post('/', upload.single('file'), (req, res, next) => {
     // Unit 4: EventEmitter — emit upload event
     appEvents.emit('file:uploaded', {
       filename: req.file.originalname,
-      size:     stats.size,
+      size: stats.size,
       sessionId
     });
 
@@ -59,10 +59,10 @@ router.post('/', upload.single('file'), (req, res, next) => {
     res.status(201).json({
       sessionId,
       originalName: req.file.originalname,
-      storedName:   req.file.filename,
-      size:         stats.size,
-      path:         req.file.path,
-      uploadedAt:   new Date().toISOString()
+      storedName: req.file.filename,
+      size: stats.size,
+      path: req.file.path,
+      uploadedAt: new Date().toISOString()
     });
   } catch (err) {
     next(err); // pass to error middleware
