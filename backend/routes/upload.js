@@ -8,7 +8,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');          // Unit 4: built-in fs module
 const { v4: uuidv4 } = require('uuid');
-const appEvents = require('../event');
+const appEvents = require('../events');
 
 const router = express.Router();
 
